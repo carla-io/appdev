@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './CSS/loginSignup.css';
 
 const LoginSignup = () => {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -22,6 +24,23 @@ const LoginSignup = () => {
     licenseNumber: ''
   });
 
+  // Helper function to redirect based on user type
+  const redirectToDashboard = (userType) => {
+    switch (userType) {
+      case 'admin':
+        navigate('/admin');
+        break;
+      case 'vet':
+        navigate('/vet');
+        break;
+      default:
+        // For regular users, you might want to create a user dashboard
+        // For now, we'll redirect to admin (you can change this)
+        navigate('/admin');
+        break;
+    }
+  };
+
   const handleLogin = async () => {
     try {
       const response = await fetch('http://localhost:5000/auth/login', {
@@ -34,20 +53,26 @@ const LoginSignup = () => {
 
       if (response.ok) {
         // Store user data in localStorage
+        const userType = data.user?.userType || 'user';
         localStorage.setItem('userEmail', data.user?.email || loginData.email);
-        localStorage.setItem('userType', data.user?.userType || 'user');
+        localStorage.setItem('userType', userType);
         localStorage.setItem('authToken', data.token);
         
         toast.success('Login successful! Welcome back.', {
           position: "top-right",
-          autoClose: 3000,
+          autoClose: 2000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
         });
         
-        console.log(data); // Handle token and user here
+        // Redirect after short delay to show success message
+        setTimeout(() => {
+          redirectToDashboard(userType);
+        }, 2000);
+        
+        console.log(data);
       } else {
         toast.error(data.message || 'Login failed. Please try again.', {
           position: "top-right",
@@ -104,21 +129,26 @@ const LoginSignup = () => {
 
       if (response.ok) {
         // Store user data in localStorage
+        const userType = registerData.isVeterinarian ? 'vet' : 'user';
         localStorage.setItem('userEmail', registerData.email);
-        localStorage.setItem('userType', registerData.isVeterinarian ? 'vet' : 'user');
+        localStorage.setItem('userType', userType);
         localStorage.setItem('authToken', data.token);
         
         toast.success('Registration successful! Welcome to Captivity and Care.', {
           position: "top-right",
-          autoClose: 3000,
+          autoClose: 2000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
         });
         
-        console.log(data); // Handle token and user here
-        setIsLogin(true);
+        // Redirect after short delay to show success message
+        setTimeout(() => {
+          redirectToDashboard(userType);
+        }, 2000);
+        
+        console.log(data);
       } else {
         toast.error(data.message || 'Registration failed. Please try again.', {
           position: "top-right",
