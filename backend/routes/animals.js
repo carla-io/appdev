@@ -70,17 +70,29 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.put('/update/:id', async (req, res) => {
+router.put('/update/:id', upload.single('photo'), async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await Animal.findByIdAndUpdate(id, req.body, { new: true });
+
+    const updateData = { ...req.body };
+
+    if (req.file) {
+      // If new photo is uploaded, add the Cloudinary path
+      updateData.photo = req.file.path;
+    }
+
+    const updated = await Animal.findByIdAndUpdate(id, updateData, { new: true });
+
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Animal not found' });
     }
+
     res.json({ success: true, animal: updated });
   } catch (err) {
+    console.error('Failed to update animal:', err);
     res.status(400).json({ success: false, message: 'Failed to update animal', error: err.message });
   }
 });
+
 
 module.exports = router;
