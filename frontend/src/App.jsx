@@ -22,7 +22,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginSignup from '../src/Pages/loginSignup';
-import AdminDashboard from '../src/Pages/AdminDashboard';
+import AdminDashboard from '../src/Pages/Admin/AdminDashboard';
 import VetDashboard from '../src/Pages/VetDashboard';
 import ProtectedRoute from '../src/Routes/ProtectedRoute';
 
