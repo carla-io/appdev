@@ -19,7 +19,8 @@ import Dashboard from './Dashboard';
 import UserManagement from './UserManagement';
 import AnimalProfiles from './AnimalProfiles';
 import TaskManagement from './TaskManagement';
-import UserModal from './UserModal';
+import TaskModal from './TaskModal';
+// import UserModal from './UserModal';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -45,6 +46,9 @@ const AdminDashboard = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAnimalModal, setShowAnimalModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  
+  // Add editing task state
+  const [editingTask, setEditingTask] = useState(null);
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -77,7 +81,8 @@ const AdminDashboard = () => {
         return <TaskManagement 
           tasks={tasks} 
           setTasks={setTasks}
-          setShowTaskModal={setShowTaskModal} 
+          setShowTaskModal={setShowTaskModal}
+          setEditingTask={setEditingTask}
         />;
       case 'schedules': 
         return <div className="coming-soon"><p>Schedules management coming soon...</p></div>;
@@ -150,6 +155,18 @@ const AdminDashboard = () => {
           setShowUserModal={setShowUserModal}
           users={users}
           setUsers={setUsers}
+        />
+      )}
+
+      {/* Task Modal - Updated with editing functionality */}
+      {showTaskModal && (
+        <TaskModal 
+          showTaskModal={showTaskModal}
+          setShowTaskModal={setShowTaskModal}
+          tasks={tasks}
+          setTasks={setTasks}
+          editingTask={editingTask}
+          setEditingTask={setEditingTask}
         />
       )}
     </div>

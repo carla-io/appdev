@@ -167,21 +167,34 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
+  background-color: #A4D9AB;
+  color: #315342;
+  border: none;
   border-radius: 0.5rem;
   font-weight: 500;
-  text-decoration: none;
-  border: none;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
   background-color: #315342;
   color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
 }
 
 .btn-primary:hover {
   background-color: #274238;
+  
 }
 
 .btn-secondary {
