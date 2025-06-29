@@ -2,10 +2,48 @@ const express = require('express');
 const router = express.Router();
 const Task = require('../models/Task');
 
+// ================================
 // CREATE task
+// ================================
 router.post('/add', async (req, res) => {
   try {
-    const task = new Task(req.body);
+    const {
+      type,
+      assignedTo,
+      animalId,
+      scheduleDate,
+      scheduleTimes,
+      isRecurring,
+      recurrencePattern,
+      endDate,
+      status
+    } = req.body;
+
+    // Validate required fields for recurring tasks
+    if (isRecurring) {
+      if (!scheduleDate) {
+        return res.status(400).json({ error: 'Recurring tasks require a start date (scheduleDate).' });
+      }
+      if (!recurrencePattern || !endDate) {
+        return res.status(400).json({ error: 'Recurring tasks require recurrencePattern and endDate.' });
+      }
+      if (new Date(endDate) <= new Date(scheduleDate)) {
+        return res.status(400).json({ error: 'End date must be after the start date.' });
+      }
+    }
+
+    const task = new Task({
+      type,
+      assignedTo,
+      animalId,
+      scheduleDate: scheduleDate || null,
+      scheduleTimes,
+      isRecurring,
+      recurrencePattern,
+      endDate,
+      status: status || 'Pending'
+    });
+
     await task.save();
     res.status(201).json(task);
   } catch (error) {
@@ -13,51 +51,156 @@ router.post('/add', async (req, res) => {
   }
 });
 
-// GET all tasks
+// ================================
+// GET all tasks (detailed view)
+// ================================
 router.get('/getAll', async (req, res) => {
   try {
-    const tasks = await Task.find().populate('assignedTo').populate('animalId');
+    const tasks = await Task.find()
+      .populate('assignedTo')
+      .populate('animalId');
     res.json(tasks);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET tasks by assigned user
+// ================================
+// GET calendar-friendly tasks
+// ================================
+router.get('/getTask', async (req, res) => {
+  try {
+    const tasks = await Task.find()
+      .populate('animalId', 'name species photo')
+      .populate('assignedTo', 'name');
+
+    const calendarEvents = [];
+
+    tasks.forEach(task => {
+      const animal = task.animalId || {};
+      const assignedUser = task.assignedTo || {};
+
+      // Ensure scheduleDate exists
+      if (!task.scheduleDate) return;
+
+      // Parse the recurrence dates
+      const startDate = new Date(task.scheduleDate);
+      const endDate = task.endDate ? new Date(task.endDate) : null;
+
+      const recurrence = task.isRecurring ? task.recurrencePattern : null;
+      const scheduleTimes = Array.isArray(task.scheduleTimes) ? task.scheduleTimes : [];
+
+      const currentDate = new Date(startDate);
+
+      const addEventsForDate = (date) => {
+        const dateStr = date.toISOString().split('T')[0];
+
+        if (scheduleTimes.length > 0) {
+          scheduleTimes.forEach(time => {
+            const startDateTime = new Date(`${dateStr}T${time}`);
+            calendarEvents.push({
+              title: `${task.type} - ${animal.name || 'Unknown'}`,
+              start: startDateTime,
+              status: task.status,
+              assignedTo: assignedUser.name || 'Unassigned',
+              animal,
+              allDay: false,
+              taskId: task._id
+            });
+          });
+        } else {
+          calendarEvents.push({
+            title: `${task.type} - ${animal.name || 'Unknown'}`,
+            start: new Date(date),
+            status: task.status,
+            assignedTo: assignedUser.name || 'Unassigned',
+            animal,
+            allDay: true,
+            taskId: task._id
+          });
+        }
+      };
+
+      // Handle recurring events
+      if (recurrence && endDate) {
+        while (currentDate <= endDate) {
+          addEventsForDate(currentDate);
+          // Increment date
+          if (recurrence === 'Daily') currentDate.setDate(currentDate.getDate() + 1);
+          else if (recurrence === 'Weekly') currentDate.setDate(currentDate.getDate() + 7);
+          else if (recurrence === 'Monthly') currentDate.setMonth(currentDate.getMonth() + 1);
+          else break;
+        }
+      } else {
+        // Not recurring, just one date
+        addEventsForDate(currentDate);
+      }
+    });
+
+    res.json(calendarEvents);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
+});
+
+
+// ================================
+// GET tasks assigned to a user
+// ================================
 router.get('/user/:userId', async (req, res) => {
   try {
-    const tasks = await Task.find({ assignedTo: req.params.userId }).populate('animalId');
+    const tasks = await Task.find({ assignedTo: req.params.userId })
+      .populate('animalId');
     res.json(tasks);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// UPDATE task status
-// UPDATE a task (edit task details)
+// ================================
+// UPDATE a task
+// ================================
 router.put('/edit/:id', async (req, res) => {
   try {
-    const taskId = req.params.id;
+    const {
+      type,
+      assignedTo,
+      animalId,
+      scheduleDate,
+      scheduleTimes,
+      isRecurring,
+      recurrencePattern,
+      endDate,
+      status
+    } = req.body;
 
-    const updatedData = {
-      title: req.body.title,
-      type: req.body.type,
-      description: req.body.description,
-      assignedTo: req.body.assignedTo,
-      animalId: req.body.animalId,
-      scheduleDate: req.body.scheduleDate,
-      status: req.body.status,
-      isRecurring: req.body.isRecurring
-    };
-
-    // Add completedAt if marked completed
-    if (req.body.status === 'Completed') {
-      updatedData.completedAt = new Date();
-    } else {
-      updatedData.completedAt = null;
+    if (isRecurring) {
+      if (!scheduleDate) {
+        return res.status(400).json({ error: 'Recurring tasks require a start date (scheduleDate).' });
+      }
+      if (!recurrencePattern || !endDate) {
+        return res.status(400).json({ error: 'Recurring tasks require recurrencePattern and endDate.' });
+      }
+      if (new Date(endDate) <= new Date(scheduleDate)) {
+        return res.status(400).json({ error: 'End date must be after the start date.' });
+      }
     }
 
-    const updatedTask = await Task.findByIdAndUpdate(taskId, updatedData, { new: true });
+    const updatedData = {
+      type,
+      assignedTo,
+      animalId,
+      scheduleDate: scheduleDate || null,
+      scheduleTimes,
+      isRecurring,
+      recurrencePattern,
+      endDate,
+      status,
+      completedAt: status === 'Completed' ? new Date() : null
+    };
+
+    const updatedTask = await Task.findByIdAndUpdate(req.params.id, updatedData, { new: true });
 
     if (!updatedTask) {
       return res.status(404).json({ error: 'Task not found' });
@@ -69,9 +212,10 @@ router.put('/edit/:id', async (req, res) => {
   }
 });
 
-
-// DELETE task
-router.delete('/:id', async (req, res) => {
+// ================================
+// DELETE a task
+// ================================
+router.delete('/delete/:id', async (req, res) => {
   try {
     await Task.findByIdAndDelete(req.params.id);
     res.json({ message: 'Task deleted successfully' });

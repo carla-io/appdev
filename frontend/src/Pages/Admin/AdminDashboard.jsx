@@ -20,6 +20,7 @@ import UserManagement from './UserManagement';
 import AnimalProfiles from './AnimalProfiles';
 import TaskManagement from './TaskManagement';
 import TaskModal from './TaskModal';
+import Schedule from './Schedule';
 // import UserModal from './UserModal';
 
 const AdminDashboard = () => {
@@ -85,7 +86,11 @@ const AdminDashboard = () => {
           setEditingTask={setEditingTask}
         />;
       case 'schedules': 
-        return <div className="coming-soon"><p>Schedules management coming soon...</p></div>;
+        return <Schedule 
+          users={users} 
+          animals={animals} 
+          tasks={tasks} 
+        />;
       case 'logs': 
         return <div className="coming-soon"><p>Health logs coming soon...</p></div>;
       case 'reports': 

@@ -1,0 +1,124 @@
+/* Animal Calendar Custom Styles */
+
+/* Calendar Header Styling */
+.fc-header-toolbar {
+  padding: 20px 0;
+  margin-bottom: 20px;
+}
+
+.fc-toolbar-title {
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  color: #315342 !important;
+}
+
+.fc-button {
+  background: #315342 !important;
+  border-color: #315342 !important;
+  color: white !important;
+  font-weight: 500 !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 4px rgba(49, 83, 66, 0.2) !important;
+}
+
+.fc-button:hover {
+  background: #4a6b59 !important;
+  border-color: #4a6b59 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(49, 83, 66, 0.3) !important;
+}
+
+.fc-button-active {
+  background: #A4D9AB !important;
+  border-color: #A4D9AB !important;
+  color: #315342 !important;
+}
+
+/* Calendar Grid Styling */
+.fc-theme-standard .fc-scrollgrid {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.fc-theme-standard .fc-scrollgrid-section > * {
+  border-color: #e5e7eb;
+}
+
+/* Day Header Styling */
+.fc-col-header {
+  background: #A4D9AB;
+}
+
+.fc-col-header-cell {
+  padding: 16px 8px !important;
+  font-weight: 600 !important;
+  color: #315342 !important;
+  border-color: #e5e7eb !important;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+/* Day Cell Styling */
+.fc-daygrid-day {
+  min-height: 120px !important;
+  background: white;
+}
+
+.fc-daygrid-day:hover {
+  background: #f8fffe !important;
+}
+
+.fc-daygrid-day-number {
+  color: #374151 !important;
+  font-weight: 600 !important;
+  padding: 8px !important;
+  font-size: 14px;
+}
+
+.fc-day-today {
+  background-color: #f0f9f7 !important;
+}
+
+.fc-day-today .fc-daygrid-day-number {
+  color: #315342 !important;
+  font-weight: 700 !important;
+}
+
+/* Event Styling */
+.fc-event {
+  border: none !important;
+  border-radius: 6px !important;
+  margin: 2px !important;
+  padding: 0 !important;
+}
+
+.fc-event-title {
+  padding: 0 !important;
+}
+
+/* Remove default event styling */
+.fc-daygrid-event {
+  margin: 2px 0 !important;
+}
+
+/* Scrollbar Styling */
+.fc-scroller::-webkit-scrollbar {
+  width: 6px;
+}
+
+.fc-scroller::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.fc-scroller::-webkit-scrollbar-thumb {
+  background: #A4D9AB;
+  border-radius: 3px;
+}
+
+.fc-scroller::-webkit-scrollbar-thumb:hover {
+  background: #315342;
+}

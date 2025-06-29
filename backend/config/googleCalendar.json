@@ -1,0 +1,7 @@
+{"web":{"client_id":"1035462018014-cgotuj4tucm9uigjc882n5v1ug7duf6s.apps.googleusercontent.com",
+"project_id":"animal-farm-464406",
+"auth_uri":"https://accounts.google.com/o/oauth2/auth",
+"token_uri":"https://oauth2.googleapis.com/token",
+"auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs",
+"client_secret":"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",
+"redirect_uris":["http://localhost:5173/admin"],"javascript_origins":["http://localhost:5173"]}}

@@ -105,6 +105,8 @@
   box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
+
+
 /* Hover effects */
 .filter-select:hover:not(:focus) {
   border-color: #9ca3af;
@@ -112,4 +114,41 @@
 
 .search-input:hover:not(:focus) {
   border-color: #9ca3af;
+}
+
+.due-date-cell {
+  min-width: 140px;
+}
+
+.recurring-cell {
+  min-width: 100px;
+}
+
+.recurring-info {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.recurring-icon {
+  color: #007bff;
+}
+
+.recurring-pattern {
+  font-size: 0.9em;
+  color: #007bff;
+}
+
+.no-recurring {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.action-btn.delete {
+  background-color: #dc3545;
+  color: white;
+}
+
+.action-btn.delete:hover {
+  background-color: #c82333;
 }
