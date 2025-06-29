@@ -58,6 +58,17 @@ router.post('/add', async (req, res) => {
   }
 });
 
+// GET /count - Count all animals
+router.get('/count', async (req, res) => {
+  try {
+    const count = await Animal.countDocuments();
+    res.status(200).json({ success: true, count });
+  } catch (error) {
+    console.error('Error counting animals:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 // Optional: Get single animal by ID
 router.get('/:id', async (req, res) => {
   try {
@@ -93,6 +104,9 @@ router.put('/update/:id', upload.single('photo'), async (req, res) => {
     res.status(400).json({ success: false, message: 'Failed to update animal', error: err.message });
   }
 });
+
+
+
 
 
 module.exports = router;

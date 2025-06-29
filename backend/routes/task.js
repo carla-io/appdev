@@ -77,13 +77,14 @@ router.get('/getTask', async (req, res) => {
     const calendarEvents = [];
 
     tasks.forEach(task => {
+      // 🚫 Skip completed tasks
+      if (task.status === 'Completed') return;
+
       const animal = task.animalId || {};
       const assignedUser = task.assignedTo || {};
 
-      // Ensure scheduleDate exists
       if (!task.scheduleDate) return;
 
-      // Parse the recurrence dates
       const startDate = new Date(task.scheduleDate);
       const endDate = task.endDate ? new Date(task.endDate) : null;
 
@@ -121,18 +122,15 @@ router.get('/getTask', async (req, res) => {
         }
       };
 
-      // Handle recurring events
       if (recurrence && endDate) {
         while (currentDate <= endDate) {
           addEventsForDate(currentDate);
-          // Increment date
           if (recurrence === 'Daily') currentDate.setDate(currentDate.getDate() + 1);
           else if (recurrence === 'Weekly') currentDate.setDate(currentDate.getDate() + 7);
           else if (recurrence === 'Monthly') currentDate.setMonth(currentDate.getMonth() + 1);
           else break;
         }
       } else {
-        // Not recurring, just one date
         addEventsForDate(currentDate);
       }
     });
@@ -143,6 +141,7 @@ router.get('/getTask', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch tasks' });
   }
 });
+
 
 
 // ================================
@@ -223,5 +222,26 @@ router.delete('/delete/:id', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Count pending tasks
+router.get('/count/pending', async (req, res) => {
+  try {
+    const count = await Task.countDocuments({ status: 'Pending' });
+    res.json({ success: true, count });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Count completed tasks
+router.get('/count/completed', async (req, res) => {
+  try {
+    const count = await Task.countDocuments({ status: 'Completed' });
+    res.json({ success: true, count });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 
 module.exports = router;

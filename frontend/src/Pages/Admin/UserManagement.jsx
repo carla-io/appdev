@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { UserPlus, Search, Filter, Edit3, Eye, Trash2 } from 'lucide-react';
+import { UserPlus, Search, Filter, Edit3, Eye, Trash2, X } from 'lucide-react';
+import '../CSS/User.css'; // Import your CSS styles
 
 const UserManagement = ({ setShowUserModal }) => {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState({
+    userType: [],
+    status: []
+  });
 
   // Fetch users on component mount
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/user/getAll');
-        if (response.data.success) {
-          setUsers(response.data.users);
+        // Using fetch instead of axios to avoid external dependencies
+        const response = await fetch('http://localhost:5000/user/getAll');
+        const data = await response.json();
+        if (data.success) {
+          setUsers(data.users);
         }
       } catch (error) {
         console.error('Failed to fetch users:', error);
@@ -22,11 +29,42 @@ const UserManagement = ({ setShowUserModal }) => {
     fetchUsers();
   }, []);
 
+  const handleFilterChange = (filterType, value) => {
+    setSelectedFilters(prev => ({
+      ...prev,
+      [filterType]: prev[filterType].includes(value)
+        ? prev[filterType].filter(item => item !== value)
+        : [...prev[filterType], value]
+    }));
+  };
+
+  const clearFilters = () => {
+    setSelectedFilters({
+      userType: [],
+      status: []
+    });
+  };
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesUserType = selectedFilters.userType.length === 0 || 
+      selectedFilters.userType.includes(user.userType);
+    
+    const matchesStatus = selectedFilters.status.length === 0 || 
+      selectedFilters.status.includes(user.status || 'active');
+    
+    return matchesSearch && matchesUserType && matchesStatus;
+  });
+
+  const hasActiveFilters = selectedFilters.userType.length > 0 || selectedFilters.status.length > 0;
+
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">User Management</h1>
-        
       </div>
 
       <div className="card">
@@ -42,11 +80,105 @@ const UserManagement = ({ setShowUserModal }) => {
                 className="search-input"
               />
             </div>
-            <button className="btn btn-outline">
-              <Filter className="nav-icon" />
-              Filter
-            </button>
+            <div className="filter-container">
+              <button 
+                className={`btn btn-outline ${hasActiveFilters ? 'btn-active' : ''}`}
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              >
+                <Filter className="nav-icon" />
+                Filter
+                {hasActiveFilters && (
+                  <span className="filter-count">
+                    {selectedFilters.userType.length + selectedFilters.status.length}
+                  </span>
+                )}
+              </button>
+              
+              {showFilterDropdown && (
+                <div className="filter-dropdown">
+                  <div className="filter-section">
+                    <div className="filter-header">
+                      <h4>User Type</h4>
+                    </div>
+                    <div className="filter-options">
+                      {['user', 'admin', 'vet'].map(type => (
+                        <label key={type} className="filter-option">
+                          <input
+                            type="checkbox"
+                            checked={selectedFilters.userType.includes(type)}
+                            onChange={() => handleFilterChange('userType', type)}
+                          />
+                          <span className="checkmark"></span>
+                          <span className="filter-label">{type}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="filter-section">
+                    <div className="filter-header">
+                      <h4>Status</h4>
+                    </div>
+                    <div className="filter-options">
+                      {['active', 'inactive'].map(status => (
+                        <label key={status} className="filter-option">
+                          <input
+                            type="checkbox"
+                            checked={selectedFilters.status.includes(status)}
+                            onChange={() => handleFilterChange('status', status)}
+                          />
+                          <span className="checkmark"></span>
+                          <span className="filter-label">{status}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="filter-actions">
+                    <button 
+                      className="btn btn-text"
+                      onClick={clearFilters}
+                    >
+                      Clear All
+                    </button>
+                    <button 
+                      className="btn btn-primary"
+                      onClick={() => setShowFilterDropdown(false)}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+          
+          {hasActiveFilters && (
+            <div className="active-filters">
+              {selectedFilters.userType.map(type => (
+                <span key={type} className="filter-tag">
+                  User Type: {type}
+                  <button 
+                    onClick={() => handleFilterChange('userType', type)}
+                    className="filter-tag-remove"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+              {selectedFilters.status.map(status => (
+                <span key={status} className="filter-tag">
+                  Status: {status}
+                  <button 
+                    onClick={() => handleFilterChange('status', status)}
+                    className="filter-tag-remove"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="table-container">
@@ -57,16 +189,18 @@ const UserManagement = ({ setShowUserModal }) => {
                 <th>Role</th>
                 <th>Status</th>
                 <th>Join Date</th>
-                <th>Actions</th>
+                {/* <th>Actions</th> */}
               </tr>
             </thead>
             <tbody>
-              {users
-                .filter(user => 
-                  user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  user.email.toLowerCase().includes(searchTerm.toLowerCase())
-                )
-                .map(user => (
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="no-data">
+                    {users.length === 0 ? 'Loading users...' : 'No users found matching your criteria'}
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map(user => (
                   <tr key={user._id}>
                     <td>
                       <div>
@@ -93,7 +227,7 @@ const UserManagement = ({ setShowUserModal }) => {
                     <td style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
-                    <td>
+                    {/* <td>
                       <div className="action-buttons">
                         <button className="action-btn edit">
                           <Edit3 />
@@ -105,13 +239,16 @@ const UserManagement = ({ setShowUserModal }) => {
                           <Trash2 />
                         </button>
                       </div>
-                    </td>
+                    </td> */}
                   </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+     
     </div>
   );
 };
