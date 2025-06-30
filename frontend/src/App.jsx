@@ -61,14 +61,15 @@ const App = () => {
         />
 
         {/* Admin Dashboard Route */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute allowedRole="admin">
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
+       <Route
+  path="/admin/*"
+  element={
+    <ProtectedRoute allowedRole="admin">
+      <AdminDashboard />
+    </ProtectedRoute>
+  }
+/>
+
 
         {/* Vet Dashboard Route */}
         <Route

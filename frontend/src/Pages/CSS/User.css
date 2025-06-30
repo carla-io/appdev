@@ -1,4 +1,4 @@
- <style jsx>{`
+
         .page-header {
           display: flex;
           justify-content: space-between;
@@ -322,4 +322,4 @@
           width: 16px;
           height: 16px;
         }
-      `}</style>
+     

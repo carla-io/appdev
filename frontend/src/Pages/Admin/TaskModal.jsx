@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast, ToastContainer } from 'react-toastify';
 import { X, Calendar, User, FileText, Tag, Clock, Repeat, Plus, Minus } from 'lucide-react';
+import 'react-toastify/dist/ReactToastify.css';
 
 const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTask }) => {
   const [users, setUsers] = useState([]);
   const [animals, setAnimals] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     type: '',
@@ -19,16 +22,36 @@ const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTas
   });
 
   useEffect(() => {
-    // Fetch users with userType: 'user'
-    axios.get('http://localhost:5000/user/getAllUsersOnly')
-      .then(res => setUsers(res.data.users))
-      .catch(err => console.error('Error fetching users:', err));
+    if (showTaskModal) {
+      fetchInitialData();
+    }
+  }, [showTaskModal]);
 
-    // Fetch animals
-    axios.get('http://localhost:5000/animal/getAll')
-      .then(res => setAnimals(res.data.animals))
-      .catch(err => console.error('Error fetching animals:', err));
-  }, []);
+  const fetchInitialData = async () => {
+    setLoading(true);
+    try {
+      // Fetch users with userType: 'user'
+      const usersResponse = await axios.get('http://localhost:5000/user/getAllUsersOnly');
+      setUsers(usersResponse.data.users);
+
+      // Fetch animals
+      const animalsResponse = await axios.get('http://localhost:5000/animal/getAll');
+      setAnimals(animalsResponse.data.animals);
+
+      toast.success('📊 Data loaded successfully!');
+    } catch (err) {
+      console.error('Error fetching initial data:', err);
+      if (err.message.includes('user')) {
+        toast.error('❌ Failed to load users. Please try again.');
+      } else if (err.message.includes('animal')) {
+        toast.error('❌ Failed to load animals. Please try again.');
+      } else {
+        toast.error('❌ Failed to load required data. Please refresh and try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (editingTask) {
@@ -43,6 +66,7 @@ const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTas
         recurrencePattern: editingTask.recurrencePattern || 'Daily',
         endDate: editingTask.endDate ? new Date(editingTask.endDate).toISOString().split('T')[0] : ''
       });
+      toast.info(`✏️ Editing task: ${editingTask.type}`);
     } else {
       setFormData({
         type: '',
@@ -87,31 +111,33 @@ const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTas
       ...prev,
       scheduleTimes: [...prev.scheduleTimes, '']
     }));
+    toast.info('⏰ Added new time slot');
   };
 
   const removeTimeSlot = (index) => {
     if (formData.scheduleTimes.length > 1) {
       const newTimes = formData.scheduleTimes.filter((_, i) => i !== index);
       setFormData(prev => ({ ...prev, scheduleTimes: newTimes }));
+      toast.info('🗑️ Removed time slot');
     }
   };
 
   const validateForm = () => {
     if (!formData.type || !formData.animal || !formData.assignedTo || !formData.scheduleDate) {
-      alert('Please fill all required fields.');
+      toast.error('❌ Please fill all required fields.');
       return false;
     }
 
     // For recurring tasks, require endDate
     if (formData.isRecurring && !formData.endDate) {
-      alert('Please select an end date for recurring tasks.');
+      toast.error('❌ Please select an end date for recurring tasks.');
       return false;
     }
 
     // Validate that at least one time is provided and not empty
     const validTimes = formData.scheduleTimes.filter(time => time.trim() !== '');
     if (validTimes.length === 0) {
-      alert('Please provide at least one schedule time.');
+      toast.error('❌ Please provide at least one schedule time.');
       return false;
     }
 
@@ -119,8 +145,18 @@ const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTas
     const timeRegex = /^\d{2}:\d{2}$/;
     const invalidTimes = validTimes.filter(time => !timeRegex.test(time));
     if (invalidTimes.length > 0) {
-      alert('Please ensure all times are in HH:mm format.');
+      toast.error('❌ Please ensure all times are in HH:mm format.');
       return false;
+    }
+
+    // Validate end date is after start date for recurring tasks
+    if (formData.isRecurring && formData.endDate) {
+      const startDate = new Date(formData.scheduleDate);
+      const endDate = new Date(formData.endDate);
+      if (endDate <= startDate) {
+        toast.error('❌ End date must be after the schedule date.');
+        return false;
+      }
     }
 
     return true;
@@ -132,6 +168,8 @@ const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTas
     if (!validateForm()) {
       return;
     }
+
+    setLoading(true);
 
     // Filter out empty times
     const validTimes = formData.scheduleTimes.filter(time => time.trim() !== '');
@@ -153,21 +191,37 @@ const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTas
     }
 
     try {
+      const animalName = animals.find(animal => animal._id === formData.animal)?.name || 'Unknown';
+      const userName = users.find(user => user._id === formData.assignedTo)?.name || 'Unknown';
+
       if (editingTask) {
         // Edit Task
         await axios.put(`http://localhost:5000/tasks/edit/${editingTask._id}`, payload);
-        alert('Task updated!');
+        toast.success(`✅ Task "${formData.type}" for ${animalName} updated successfully!`);
       } else {
         // Create Task
         await axios.post('http://localhost:5000/tasks/add', payload);
-        alert('Task added!');
+        toast.success(`✅ Task "${formData.type}" assigned to ${userName} for ${animalName}!`);
       }
 
       handleClose();
-      window.location.reload();
+      
+      // Reload the page after a short delay to show the success message
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+
     } catch (err) {
       console.error('Failed to submit task:', err);
-      alert('Something went wrong. Please check the input.');
+      
+      // Handle specific error messages from the server
+      if (err.response?.data?.message) {
+        toast.error(`❌ ${err.response.data.message}`);
+      } else {
+        toast.error('❌ Something went wrong. Please check the input and try again.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -185,6 +239,7 @@ const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTas
     });
     setEditingTask(null);
     setShowTaskModal(false);
+    toast.info('📋 Task form closed');
   };
 
   if (!showTaskModal) return null;
@@ -235,7 +290,14 @@ const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTas
                 id="isRecurring" 
                 name="isRecurring" 
                 checked={formData.isRecurring} 
-                onChange={handleChange}
+                onChange={(e) => {
+                  handleChange(e);
+                  if (e.target.checked) {
+                    toast.info('🔄 Recurring task enabled');
+                  } else {
+                    toast.info('📅 Single task selected');
+                  }
+                }}
                 className="checkbox-input"
               />
               <label htmlFor="isRecurring" className="checkbox-label">
@@ -284,6 +346,7 @@ const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTas
                   onChange={handleChange} 
                   className="form-input" 
                   required={formData.isRecurring}
+                  min={formData.scheduleDate} // Prevent selecting end date before start date
                 />
               </div>
             </>
@@ -329,11 +392,29 @@ const TaskModal = ({ showTaskModal, setShowTaskModal, setEditingTask, editingTas
           </div>
 
           <div className="modal-footer">
-            <button type="button" onClick={handleClose} className="btn btn-secondary">Cancel</button>
-            <button type="submit" className="btn btn-primary">{editingTask ? 'Update' : 'Assign'} Task</button>
+            <button type="button" onClick={handleClose} className="btn btn-secondary" disabled={loading}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Processing...' : (editingTask ? 'Update' : 'Assign')} Task
+            </button>
           </div>
         </form>
       </div>
+
+      {/* Toast Container for notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   );
 };

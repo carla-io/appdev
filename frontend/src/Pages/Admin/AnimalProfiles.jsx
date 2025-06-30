@@ -1,138 +1,209 @@
 import React, { useEffect, useState } from 'react';
-import { PlusCircle, Edit3, Eye, X, Save, Camera, Upload } from 'lucide-react';
+import { PlusCircle, Edit3, Eye, X, Save, Camera, Upload, Trash2 } from 'lucide-react';
 import axios from 'axios';
-import '../CSS/AnimalProfile.css'; // Assuming you have a CSS file for styling
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import '../CSS/AnimalProfile.css';
 
 const AnimalProfiles = ({ setShowAnimalModal }) => {
   const [animals, setAnimals] = useState([]);
   const [selectedAnimal, setSelectedAnimal] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [modals, setModals] = useState({
+    detail: false,
+    edit: false,
+    add: false,
+    delete: false
+  });
   const [editAnimal, setEditAnimal] = useState({});
   const [newAnimal, setNewAnimal] = useState({
-    name: '',
-    species: '',
-    breed: '',
-    age: '',
-    status: 'healthy',
-    owner: '',
-    photo: ''
+    name: '', species: '', breed: '', age: '', status: 'healthy', owner: ''
+  });
+  const [photos, setPhotos] = useState({
+    editFile: null, newFile: null, editPreview: '', newPreview: ''
   });
 
-  // Photo preview states
-  const [editPhotoPreview, setEditPhotoPreview] = useState('');
-  const [newPhotoPreview, setNewPhotoPreview] = useState('');
-
   useEffect(() => {
-    const fetchAnimals = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/animal/getAll');
-        if (response.data.success) {
-          setAnimals(response.data.animals);
-        }
-      } catch (error) {
-        console.error('Error fetching animals:', error.message);
-      }
-    };
-
     fetchAnimals();
   }, []);
 
-  // Handle photo file selection
+  const fetchAnimals = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/animal/getAll');
+      if (response.data.success) {
+        setAnimals(response.data.animals);
+        toast.success('Animals loaded successfully!');
+      }
+    } catch (error) {
+      toast.error('Error fetching animals');
+      console.error('Error:', error.message);
+    }
+  };
+
   const handlePhotoChange = (e, isEdit = false) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result;
-        if (isEdit) {
-          setEditAnimal({ ...editAnimal, photo: base64String });
-          setEditPhotoPreview(base64String);
-        } else {
-          setNewAnimal({ ...newAnimal, photo: base64String });
-          setNewPhotoPreview(base64String);
-        }
+        setPhotos(prev => ({
+          ...prev,
+          [isEdit ? 'editFile' : 'newFile']: file,
+          [isEdit ? 'editPreview' : 'newPreview']: reader.result
+        }));
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Remove photo
   const removePhoto = (isEdit = false) => {
-    if (isEdit) {
-      setEditAnimal({ ...editAnimal, photo: '' });
-      setEditPhotoPreview('');
-    } else {
-      setNewAnimal({ ...newAnimal, photo: '' });
-      setNewPhotoPreview('');
-    }
+    setPhotos(prev => ({
+      ...prev,
+      [isEdit ? 'editFile' : 'newFile']: null,
+      [isEdit ? 'editPreview' : 'newPreview']: ''
+    }));
   };
 
-  const handleViewDetails = (animal) => {
-    setSelectedAnimal(animal);
-    setShowDetailModal(true);
-  };
-
-  const handleEdit = (animal) => {
-    setSelectedAnimal(animal);
-    setEditAnimal({ ...animal });
-    setEditPhotoPreview(animal.photo || '');
-    setShowEditModal(true);
-  };
-
-  const handleUpdateAnimal = async () => {
-    try {
-      const response = await axios.put(`http://localhost:5000/animal/update/${editAnimal._id}`, editAnimal);
-      if (response.data.success) {
-        const updatedAnimals = animals.map(animal => 
-          animal._id === editAnimal._id ? response.data.animal : animal
-        );
-        setAnimals(updatedAnimals);
-        setShowEditModal(false);
-        setEditAnimal({});
-        setEditPhotoPreview('');
+  const openModal = (type, animal = null) => {
+    setModals({ detail: false, edit: false, add: false, delete: false, [type]: true });
+    if (animal) {
+      setSelectedAnimal(animal);
+      if (type === 'edit') {
+        setEditAnimal({ ...animal });
+        setPhotos(prev => ({ ...prev, editPreview: animal.photo || '' }));
       }
-    } catch (error) {
-      console.error('Error updating animal:', error);
-    }
-  };
-
-  const handleAddAnimal = async () => {
-    try {
-      const response = await axios.post('http://localhost:5000/animal/add', newAnimal);
-      if (response.data.success) {
-        setAnimals(prev => [...prev, response.data.animal]);
-        setShowAddModal(false);
-        setNewAnimal({ name: '', species: '', breed: '', age: '', status: 'healthy', owner: '', photo: '' });
-        setNewPhotoPreview('');
-      }
-    } catch (error) {
-      console.error('Error adding animal:', error);
     }
   };
 
   const closeModal = () => {
-    setShowDetailModal(false);
-    setShowEditModal(false);
-    setShowAddModal(false);
+    setModals({ detail: false, edit: false, add: false, delete: false });
     setSelectedAnimal(null);
     setEditAnimal({});
-    setEditPhotoPreview('');
-    setNewPhotoPreview('');
+    setNewAnimal({ name: '', species: '', breed: '', age: '', status: 'healthy', owner: '' });
+    setPhotos({ editFile: null, newFile: null, editPreview: '', newPreview: '' });
   };
+
+  const handleDelete = async () => {
+    try {
+      const response = await axios.delete(`http://localhost:5000/animal/delete/${selectedAnimal._id}`);
+      if (response.data.success) {
+        setAnimals(prev => prev.filter(animal => animal._id !== selectedAnimal._id));
+        toast.success(`${selectedAnimal.name} deleted successfully!`);
+        closeModal();
+      }
+    } catch (error) {
+      toast.error('Error deleting animal');
+      console.error('Error:', error);
+    }
+  };
+
+  const submitForm = async (isEdit = false) => {
+    try {
+      const formData = new FormData();
+      const data = isEdit ? editAnimal : newAnimal;
+      
+      Object.entries(data).forEach(([key, value]) => {
+        formData.append(key, value || '');
+      });
+
+      const photoFile = isEdit ? photos.editFile : photos.newFile;
+      if (photoFile) formData.append('photo', photoFile);
+
+      const url = isEdit 
+        ? `http://localhost:5000/animal/update/${editAnimal._id}`
+        : 'http://localhost:5000/animal/add';
+      
+      const response = await axios[isEdit ? 'put' : 'post'](url, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (response.data.success) {
+        if (isEdit) {
+          setAnimals(prev => prev.map(animal => 
+            animal._id === editAnimal._id ? response.data.animal : animal
+          ));
+          toast.success(`${editAnimal.name} updated successfully!`);
+        } else {
+          setAnimals(prev => [...prev, response.data.animal]);
+          toast.success(`${newAnimal.name} added successfully!`);
+        }
+        closeModal();
+      }
+    } catch (error) {
+      toast.error(`Error ${isEdit ? 'updating' : 'adding'} animal`);
+      console.error('Error:', error);
+    }
+  };
+
+  const renderPhotoSection = (isEdit = false) => {
+    const preview = isEdit ? photos.editPreview : photos.newPreview;
+    const inputId = isEdit ? 'edit-photo-input' : 'new-photo-input';
+    
+    return (
+      <div className="photo-upload-section">
+        <label className="photo-upload-label">Animal Photo</label>
+        {preview ? (
+          <div className="photo-preview-container">
+            <img src={preview} alt="Preview" className="photo-preview" />
+            <button type="button" onClick={() => removePhoto(isEdit)} className="remove-photo-btn">
+              <X />
+            </button>
+          </div>
+        ) : (
+          <div className="photo-upload-area">
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={(e) => handlePhotoChange(e, isEdit)}
+              className="photo-input"
+              id={inputId}
+            />
+            <label htmlFor={inputId} className="photo-upload-button">
+              <Upload />
+              <span>Upload Photo</span>
+            </label>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderFormFields = (data, setData) => (
+    <>
+      {renderPhotoSection(data === editAnimal)}
+      {['name', 'species', 'breed', 'age', 'owner'].map(field => (
+        <div key={field} className="form-field">
+          <label className="form-label">{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+          <input 
+            type={field === 'age' ? 'number' : 'text'}
+            placeholder={`Enter ${field}${field === 'age' ? ' in years' : ''}`}
+            value={data[field] || ''} 
+            onChange={(e) => setData(prev => ({ ...prev, [field]: e.target.value }))}
+            className="form-input"
+          />
+        </div>
+      ))}
+      <div className="form-field">
+        <label className="form-label">Status</label>
+        <select 
+          value={data.status || 'healthy'} 
+          onChange={(e) => setData(prev => ({ ...prev, status: e.target.value }))}
+          className="form-select"
+        >
+          <option value="healthy">Healthy</option>
+          <option value="needs_attention">Needs Attention</option>
+        </select>
+      </div>
+    </>
+  );
 
   return (
     <div className="animal-profiles-container">
-      {/* Page Header */}
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+      
+      {/* Header */}
       <div className="animal-profiles-header">
         <h1 className="animal-profiles-title">Animal Profiles</h1>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="add-animal-btn"
-        >
-          <PlusCircle />
-          Add Animal
+        <button onClick={() => openModal('add')} className="add-animal-btn">
+          <PlusCircle /> Add Animal
         </button>
       </div>
 
@@ -140,14 +211,9 @@ const AnimalProfiles = ({ setShowAnimalModal }) => {
       <div className="animals-grid">
         {animals.map(animal => (
           <div key={animal._id} className="animal-card">
-            {/* Animal Photo */}
             <div className="animal-photo-container">
               {animal.photo ? (
-                <img 
-                  src={animal.photo} 
-                  alt={animal.name}
-                  className="animal-photo"
-                />
+                <img src={animal.photo} alt={animal.name} className="animal-photo" />
               ) : (
                 <div className="animal-photo-placeholder">
                   <Camera className="photo-placeholder-icon" />
@@ -156,236 +222,86 @@ const AnimalProfiles = ({ setShowAnimalModal }) => {
               )}
             </div>
 
-            {/* Animal Header */}
             <div className="animal-header">
               <h3 className="animal-name">{animal.name}</h3>
-              <span className={`animal-status-badge ${
-                animal.status === 'healthy' ? 'healthy' : 'needs-attention'
-              }`}>
+              <span className={`animal-status-badge ${animal.status === 'healthy' ? 'healthy' : 'needs-attention'}`}>
                 {animal.status?.replace('_', ' ') || 'N/A'}
               </span>
             </div>
 
-            {/* Animal Details */}
             <div className="animal-details">
-              <div className="animal-detail">
-                <span className="animal-detail-label">Species:</span>
-                <span className="animal-detail-value">{animal.species || 'N/A'}</span>
-              </div>
-              <div className="animal-detail">
-                <span className="animal-detail-label">Breed:</span>
-                <span className="animal-detail-value">{animal.breed || 'N/A'}</span>
-              </div>
-              <div className="animal-detail">
-                <span className="animal-detail-label">Age:</span>
-                <span className="animal-detail-value">{animal.age || 'N/A'} years</span>
-              </div>
-              <div className="animal-detail">
-                <span className="animal-detail-label">Owner:</span>
-                <span className="animal-detail-value">{animal.owner || 'N/A'}</span>
-              </div>
+              {['species', 'breed', 'age', 'owner'].map(field => (
+                <div key={field} className="animal-detail">
+                  <span className="animal-detail-label">{field.charAt(0).toUpperCase() + field.slice(1)}:</span>
+                  <span className="animal-detail-value">{animal[field] || 'N/A'}{field === 'age' ? ' years' : ''}</span>
+                </div>
+              ))}
             </div>
 
-            {/* Animal Actions */}
             <div className="animal-actions">
-              <button 
-                onClick={() => handleViewDetails(animal)}
-                className="view-details-btn"
-              >
-                <Eye />
-                View Details
+              <button onClick={() => openModal('detail', animal)} className="view-details-btn">
+                <Eye /> View Details
               </button>
-              <button 
-                onClick={() => handleEdit(animal)}
-                className="edit-btn"
-              >
+              <button onClick={() => openModal('edit', animal)} className="edit-btn">
                 <Edit3 />
+              </button>
+              <button onClick={() => openModal('delete', animal)} className="delete-btn">
+                <Trash2 />
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      {/* View Details Modal */}
-      {showDetailModal && selectedAnimal && (
+      {/* Detail Modal */}
+      {modals.detail && selectedAnimal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">{selectedAnimal.name}'s Details</h2>
-              <button onClick={closeModal} className="modal-close-btn">
-                <X />
-              </button>
+              <button onClick={closeModal} className="modal-close-btn"><X /></button>
             </div>
-            
             <div>
-              {/* Photo in Details Modal */}
               {selectedAnimal.photo && (
                 <div className="detail-photo-container">
-                  <img 
-                    src={selectedAnimal.photo} 
-                    alt={selectedAnimal.name}
-                    className="detail-photo"
-                  />
+                  <img src={selectedAnimal.photo} alt={selectedAnimal.name} className="detail-photo" />
                 </div>
               )}
-
-              <div className="detail-item">
-                <span className="detail-label">Species:</span>
-                <span className="detail-value">{selectedAnimal.species || 'N/A'}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Breed:</span>
-                <span className="detail-value">{selectedAnimal.breed || 'N/A'}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Age:</span>
-                <span className="detail-value">{selectedAnimal.age || 'N/A'} years</span>
-              </div>
+              {['species', 'breed', 'age', 'owner'].map(field => (
+                <div key={field} className="detail-item">
+                  <span className="detail-label">{field.charAt(0).toUpperCase() + field.slice(1)}:</span>
+                  <span className="detail-value">{selectedAnimal[field] || 'N/A'}{field === 'age' ? ' years' : ''}</span>
+                </div>
+              ))}
               <div className="detail-item">
                 <span className="detail-label">Status:</span>
-                <span className={`detail-status-badge ${
-                  selectedAnimal.status === 'healthy' ? 'healthy' : 'needs-attention'
-                }`}>
+                <span className={`detail-status-badge ${selectedAnimal.status === 'healthy' ? 'healthy' : 'needs-attention'}`}>
                   {selectedAnimal.status?.replace('_', ' ') || 'N/A'}
                 </span>
               </div>
-              <div className="detail-item">
-                <span className="detail-label">Owner:</span>
-                <span className="detail-value">{selectedAnimal.owner || 'N/A'}</span>
-              </div>
             </div>
-
             <div className="modal-actions">
-              <button onClick={closeModal} className="btn-secondary">
-                Close
-              </button>
+              <button onClick={closeModal} className="btn-secondary">Close</button>
             </div>
           </div>
         </div>
       )}
 
       {/* Edit Modal */}
-      {showEditModal && selectedAnimal && (
+      {modals.edit && selectedAnimal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Edit {selectedAnimal.name}</h2>
-              <button onClick={closeModal} className="modal-close-btn">
-                <X />
-              </button>
+              <button onClick={closeModal} className="modal-close-btn"><X /></button>
             </div>
-            
             <div className="form-group">
-              {/* Photo Upload Section */}
-              <div className="photo-upload-section">
-                <label className="photo-upload-label">Animal Photo</label>
-                {editPhotoPreview ? (
-                  <div className="photo-preview-container">
-                    <img 
-                      src={editPhotoPreview} 
-                      alt="Preview"
-                      className="photo-preview"
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => removePhoto(true)}
-                      className="remove-photo-btn"
-                    >
-                      <X />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="photo-upload-area">
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={(e) => handlePhotoChange(e, true)}
-                      className="photo-input"
-                      id="edit-photo-input"
-                    />
-                    <label htmlFor="edit-photo-input" className="photo-upload-button">
-                      <Upload />
-                      <span>Upload Photo</span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Name</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter animal name" 
-                  value={editAnimal.name || ''} 
-                  onChange={(e) => setEditAnimal({ ...editAnimal, name: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Species</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter species" 
-                  value={editAnimal.species || ''} 
-                  onChange={(e) => setEditAnimal({ ...editAnimal, species: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Breed</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter breed" 
-                  value={editAnimal.breed || ''} 
-                  onChange={(e) => setEditAnimal({ ...editAnimal, breed: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Age</label>
-                <input 
-                  type="number" 
-                  placeholder="Enter age in years" 
-                  value={editAnimal.age || ''} 
-                  onChange={(e) => setEditAnimal({ ...editAnimal, age: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Owner</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter owner name" 
-                  value={editAnimal.owner || ''} 
-                  onChange={(e) => setEditAnimal({ ...editAnimal, owner: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Status</label>
-                <select 
-                  value={editAnimal.status || 'healthy'} 
-                  onChange={(e) => setEditAnimal({ ...editAnimal, status: e.target.value })}
-                  className="form-select"
-                >
-                  <option value="healthy">Healthy</option>
-                  <option value="needs_attention">Needs Attention</option>
-                </select>
-              </div>
+              {renderFormFields(editAnimal, setEditAnimal)}
             </div>
-
             <div className="modal-actions">
-              <button onClick={closeModal} className="btn-secondary">
-                Cancel
-              </button>
-              <button onClick={handleUpdateAnimal} className="btn-primary">
-                <Save />
-                Save Changes
+              <button onClick={closeModal} className="btn-secondary">Cancel</button>
+              <button onClick={() => submitForm(true)} className="btn-primary">
+                <Save /> Save Changes
               </button>
             </div>
           </div>
@@ -393,127 +309,47 @@ const AnimalProfiles = ({ setShowAnimalModal }) => {
       )}
 
       {/* Add Modal */}
-      {showAddModal && (
+      {modals.add && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Add New Animal</h2>
-              <button onClick={closeModal} className="modal-close-btn">
-                <X />
-              </button>
+              <button onClick={closeModal} className="modal-close-btn"><X /></button>
             </div>
-            
             <div className="form-group">
-              {/* Photo Upload Section */}
-              <div className="photo-upload-section">
-                <label className="photo-upload-label">Animal Photo</label>
-                {newPhotoPreview ? (
-                  <div className="photo-preview-container">
-                    <img 
-                      src={newPhotoPreview} 
-                      alt="Preview"
-                      className="photo-preview"
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => removePhoto(false)}
-                      className="remove-photo-btn"
-                    >
-                      <X />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="photo-upload-area">
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={(e) => handlePhotoChange(e, false)}
-                      className="photo-input"
-                      id="new-photo-input"
-                    />
-                    <label htmlFor="new-photo-input" className="photo-upload-button">
-                      <Upload />
-                      <span>Upload Photo</span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Name</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter animal name" 
-                  value={newAnimal.name} 
-                  onChange={(e) => setNewAnimal({ ...newAnimal, name: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Species</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter species" 
-                  value={newAnimal.species} 
-                  onChange={(e) => setNewAnimal({ ...newAnimal, species: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Breed</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter breed" 
-                  value={newAnimal.breed} 
-                  onChange={(e) => setNewAnimal({ ...newAnimal, breed: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Age</label>
-                <input 
-                  type="number" 
-                  placeholder="Enter age in years" 
-                  value={newAnimal.age} 
-                  onChange={(e) => setNewAnimal({ ...newAnimal, age: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Owner</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter owner name" 
-                  value={newAnimal.owner} 
-                  onChange={(e) => setNewAnimal({ ...newAnimal, owner: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Status</label>
-                <select 
-                  value={newAnimal.status} 
-                  onChange={(e) => setNewAnimal({ ...newAnimal, status: e.target.value })}
-                  className="form-select"
-                >
-                  <option value="healthy">Healthy</option>
-                  <option value="needs_attention">Needs Attention</option>
-                </select>
-              </div>
+              {renderFormFields(newAnimal, setNewAnimal)}
             </div>
-
             <div className="modal-actions">
-              <button onClick={closeModal} className="btn-secondary">
-                Cancel
+              <button onClick={closeModal} className="btn-secondary">Cancel</button>
+              <button onClick={() => submitForm(false)} className="btn-primary">
+                <Save /> Add Animal
               </button>
-              <button onClick={handleAddAnimal} className="btn-primary">
-                <Save />
-                Add Animal
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {modals.delete && selectedAnimal && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Delete Animal</h2>
+              <button onClick={closeModal} className="modal-close-btn"><X /></button>
+            </div>
+            <div className="delete-modal-body">
+              <div className="delete-warning-icon">
+                <Trash2 className="warning-icon" />
+              </div>
+              <p className="delete-warning-text">
+                Are you sure you want to delete <strong>{selectedAnimal.name}</strong>? 
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-actions">
+              <button onClick={closeModal} className="btn-secondary">Cancel</button>
+              <button onClick={handleDelete} className="btn-danger">
+                <Trash2 /> Delete Animal
               </button>
             </div>
           </div>
