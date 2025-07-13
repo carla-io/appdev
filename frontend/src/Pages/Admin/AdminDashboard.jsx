@@ -43,8 +43,8 @@ const AdminDashboard = () => {
     { id: 'tasks', label: 'Task Management', icon: CheckCircle },
     { id: 'schedules', label: 'Schedules', icon: Calendar },
     { id: 'logs', label: 'Health Logs', icon: FileText },
-    { id: 'reports', label: 'Reports', icon: Download },
-    { id: 'audit', label: 'Audit Logs', icon: Shield },
+    // { id: 'reports', label: 'Reports', icon: Download },
+    // { id: 'audit', label: 'Audit Logs', icon: Shield },
   ];
 
   return (
@@ -104,8 +104,8 @@ const AdminDashboard = () => {
             <Route path="tasks" element={<TaskManagement tasks={tasks} setTasks={setTasks} setShowTaskModal={setShowTaskModal} setEditingTask={setEditingTask} />} />
             <Route path="schedules" element={<Schedule users={users} animals={animals} tasks={tasks} />} />
             <Route path="logs" element={<div className="coming-soon"><p>Health logs coming soon...</p></div>} />
-            <Route path="reports" element={<div className="coming-soon"><p>Reports generation coming soon...</p></div>} />
-            <Route path="audit" element={<div className="coming-soon"><p>Audit logs coming soon...</p></div>} />
+            {/* <Route path="reports" element={<div className="coming-soon"><p>Reports generation coming soon...</p></div>} />
+            <Route path="audit" element={<div className="coming-soon"><p>Audit logs coming soon...</p></div>} /> */}
           </Routes>
         </div>
       </div>
