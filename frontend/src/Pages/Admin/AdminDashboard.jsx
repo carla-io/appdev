@@ -20,6 +20,7 @@ import TaskManagement from './TaskManagement';
 import TaskModal from './TaskModal';
 import Schedule from './Schedule';
 import UserModal from './UserManagement';
+import AllBehaviorsScreen from './Behaviors'; // Import AllBehaviorsScreen for the logs route
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -95,15 +96,15 @@ const AdminDashboard = () => {
       </div>
 
       <div className="main-content">
-        <div className="content-area">
-          <Routes>
+         <div className="content-area">
+           <Routes>
             <Route index element={<Dashboard users={users} animals={animals} tasks={tasks} />} />
             <Route path="dashboard" element={<Dashboard users={users} animals={animals} tasks={tasks} />} />
             <Route path="users" element={<UserManagement users={users} setUsers={setUsers} setShowUserModal={setShowUserModal} />} />
             <Route path="animals" element={<AnimalProfiles animals={animals} setAnimals={setAnimals} setShowAnimalModal={setShowAnimalModal} />} />
             <Route path="tasks" element={<TaskManagement tasks={tasks} setTasks={setTasks} setShowTaskModal={setShowTaskModal} setEditingTask={setEditingTask} />} />
             <Route path="schedules" element={<Schedule users={users} animals={animals} tasks={tasks} />} />
-            <Route path="logs" element={<div className="coming-soon"><p>Health logs coming soon...</p></div>} />
+            <Route path="logs" element={<AllBehaviorsScreen />} />
             {/* <Route path="reports" element={<div className="coming-soon"><p>Reports generation coming soon...</p></div>} />
             <Route path="audit" element={<div className="coming-soon"><p>Audit logs coming soon...</p></div>} /> */}
           </Routes>

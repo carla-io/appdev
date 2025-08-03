@@ -56,7 +56,11 @@ const LoginSignup = () => {
         const userType = data.user?.userType || 'user';
         localStorage.setItem('userEmail', data.user?.email || loginData.email);
         localStorage.setItem('userType', userType);
+        localStorage.setItem('userData', 'true');
         localStorage.setItem('authToken', data.token);
+
+        
+
         
         toast.success('Login successful! Welcome back.', {
           position: "top-right",

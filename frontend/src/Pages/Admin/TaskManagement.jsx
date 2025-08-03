@@ -1,36 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { toast, ToastContainer } from 'react-toastify';
-import { PlusCircle, Edit3, CheckCircle, Search, Filter, Calendar, Trash2, RefreshCw } from 'lucide-react';
-import '../CSS/TaskManagement.css';
-import 'react-toastify/dist/ReactToastify.css';
+import { Search, Filter, RefreshCw, Plus, Menu, User, Clock, Repeat, CheckCircle, Camera, Expand, Check, Edit, Trash2, X } from 'lucide-react';
+import TaskModal from './TaskModal'; // Import the TaskModal component
+import '../CSS/TaskManagement.css'; // Import the CSS for Task Management
 
-const TaskManagement = ({ setShowTaskModal, setEditingTask }) => {
+// API base URL
+const API_BASE_URL = 'http://localhost:5000';
+
+const TaskManagement = ({ navigation }) => {
   const [tasks, setTasks] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
 
   useEffect(() => {
     fetchTasks();
   }, []);
 
+  useEffect(() => {
+    if (!showTaskModal) {
+      fetchTasks();
+      // Clear editing task when modal closes
+      if (editingTask) {
+        setEditingTask(null);
+      }
+    }
+  }, [showTaskModal]);
+
+  const showToast = (type, text1, text2 = '') => {
+    setToastMessage({ type, text1, text2 });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   const fetchTasks = async (showSuccessMessage = false) => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/tasks/getAll');
-      setTasks(res.data);
+      const response = await fetch(`${API_BASE_URL}/tasks/getAll`);
+      const data = await response.json();
+      setTasks(data);
       
       if (showSuccessMessage) {
-        toast.success('Tasks refreshed successfully!');
+        showToast('success', 'Tasks refreshed successfully!');
       }
     } catch (err) {
       console.error('Failed to fetch tasks:', err);
-      if (err.response?.data?.message) {
-        toast.error(`Failed to load tasks: ${err.response.data.message}`);
-      } else {
-        toast.error('Failed to load tasks. Please refresh the page.');
-      }
+      showToast('error', 'Failed to load tasks', 'Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -44,7 +63,7 @@ const TaskManagement = ({ setShowTaskModal, setEditingTask }) => {
     try {
       const task = tasks.find(t => t._id === taskId);
       if (!task) {
-        toast.error('Task not found.');
+        showToast('error', 'Task not found');
         return;
       }
 
@@ -55,107 +74,79 @@ const TaskManagement = ({ setShowTaskModal, setEditingTask }) => {
         status: newStatus
       };
 
-      // Add completedAt timestamp when marking as completed
       if (newStatus === 'Completed') {
         updateData.completedAt = new Date();
       } else {
-        // Remove completedAt when marking as pending
         updateData.completedAt = null;
       }
 
-      await axios.put(`http://localhost:5000/tasks/edit/${taskId}`, updateData);
+      const response = await fetch(`${API_BASE_URL}/tasks/edit/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
 
-      // Show success notification
-      if (newStatus === 'Completed') {
-        toast.success(`✅ Task "${task.type}" for ${task.animalId?.name || 'Unknown'} marked as completed!`);
-      } else {
-        toast.info(`🔄 Task "${task.type}" for ${task.animalId?.name || 'Unknown'} marked as pending`);
+      if (!response.ok) {
+        throw new Error('Failed to update task');
       }
 
-      fetchTasks(); // Refresh task list
+      if (newStatus === 'Completed') {
+        showToast('success', 'Task completed!', `"${task.type}" for ${task.animalId?.name || 'Unknown'}`);
+      } else {
+        showToast('info', 'Task marked as pending', `"${task.type}" for ${task.animalId?.name || 'Unknown'}`);
+      }
+
+      fetchTasks();
     } catch (error) {
       console.error('Failed to update task:', error);
-      if (error.response?.data?.message) {
-        toast.error(`❌ Failed to update task: ${error.response.data.message}`);
-      } else {
-        toast.error('❌ Failed to update task. Please try again.');
-      }
+      showToast('error', 'Failed to update task', 'Please try again.');
     }
   };
 
   const handleEditTask = (task) => {
     setEditingTask(task);
     setShowTaskModal(true);
-    toast.info(`✏️ Editing task: ${task.type} for ${task.animalId?.name || 'Unknown'}`);
+    showToast('info', 'Editing task', `${task.type} for ${task.animalId?.name || 'Unknown'}`);
   };
 
-  const handleDeleteTask = async (taskId, taskType) => {
+  const handleAddTask = () => {
+    setEditingTask(null); // Clear any existing editing task
+    setShowTaskModal(true);
+    showToast('info', 'Adding new task');
+  };
+
+  const handleDeleteTask = (taskId, taskType) => {
     const task = tasks.find(t => t._id === taskId);
     const animalName = task?.animalId?.name || 'Unknown';
     
-    // Use toast.dismiss() to clear any existing toasts before showing the confirmation
-    toast.dismiss();
-    
-    // Create a custom toast with confirmation buttons
-    const confirmToast = toast(
-      ({ closeToast }) => (
-        <div>
-          <p>Are you sure you want to delete this <strong>{taskType}</strong> task for <strong>{animalName}</strong>?</p>
-          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-            <button
-              onClick={async () => {
-                closeToast();
-                try {
-                  await axios.delete(`http://localhost:5000/tasks/delete/${taskId}`);
-                  fetchTasks(); // Refresh task list
-                  toast.success(`🗑️ Task "${taskType}" for ${animalName} deleted successfully!`);
-                } catch (error) {
-                  console.error('Failed to delete task:', error);
-                  if (error.response?.data?.message) {
-                    toast.error(`❌ Failed to delete task: ${error.response.data.message}`);
-                  } else {
-                    toast.error('❌ Failed to delete task. Please try again.');
-                  }
-                }
-              }}
-              style={{
-                background: '#dc3545',
-                color: 'white',
-                border: 'none',
-                padding: '6px 12px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Delete
-            </button>
-            <button
-              onClick={closeToast}
-              style={{
-                background: '#6c757d',
-                color: 'white',
-                border: 'none',
-                padding: '6px 12px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ),
-      {
-        position: 'top-center',
-        autoClose: false,
-        closeOnClick: false,
-        draggable: false,
-        closeButton: false,
-        className: 'delete-confirmation-toast'
-      }
-    );
+    if (window.confirm(`Are you sure you want to delete this ${taskType} task for ${animalName}?`)) {
+      const deleteTask = async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/tasks/delete/${taskId}`, {
+            method: 'DELETE',
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to delete task');
+          }
+
+          fetchTasks();
+          showToast('success', 'Task deleted', `"${taskType}" for ${animalName} deleted successfully!`);
+        } catch (error) {
+          console.error('Failed to delete task:', error);
+          showToast('error', 'Failed to delete task', 'Please try again.');
+        }
+      };
+      
+      deleteTask();
+    }
+  };
+
+  const handleViewImage = (imageUri) => {
+    setSelectedImage(imageUri);
+    setImageModalVisible(true);
   };
 
   const formatDateTime = (date, times) => {
@@ -163,7 +154,6 @@ const TaskManagement = ({ setShowTaskModal, setEditingTask }) => {
     
     let result = '';
     
-    // Format date
     if (date) {
       const taskDate = new Date(date);
       result = taskDate.toLocaleDateString(undefined, {
@@ -173,7 +163,6 @@ const TaskManagement = ({ setShowTaskModal, setEditingTask }) => {
       });
     }
 
-    // Format times
     if (times && times.length > 0) {
       const formattedTimes = times.map(time => {
         const timeDate = new Date(`1970-01-01T${time}`);
@@ -206,160 +195,237 @@ const TaskManagement = ({ setShowTaskModal, setEditingTask }) => {
     return matchesSearch && matchesStatus;
   });
 
-  return (
-    <div>
-      <div className="page-header">
-        <h1 className="page-title">Task Management</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            className="btn btn-secondary"
-            onClick={handleRefresh}
-            disabled={loading}
-          >
-            <RefreshCw className={`nav-icon ${loading ? 'spin' : ''}`} />
-            Refresh
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              setEditingTask(null);
-              setShowTaskModal(true);
-              toast.info('📝 Opening task assignment form...');
-            }}
-          >
-            <PlusCircle className="nav-icon" />
-            Assign Task
-          </button>
+  const filterOptions = [
+    { label: 'All Status', value: 'all' },
+    { label: 'Pending', value: 'pending' },
+    { label: 'Completed', value: 'completed' },
+  ];
+
+  const TaskCard = ({ task }) => (
+    <div className="task-card">
+      <div className="task-header">
+        <div className="task-info">
+          <h3 className="task-type">{task.type}</h3>
+          <p className="animal-name">{task.animalId?.name || 'Unknown Animal'}</p>
+        </div>
+        <div className={`status-badge ${task.status?.toLowerCase() === 'completed' ? 'completed' : 'pending'}`}>
+          <span className="status-text">{task.status}</span>
         </div>
       </div>
+      
+      <div className="task-details">
+        <p className="assigned-to">
+          <User size={14} />
+          Assigned to: {task.assignedTo?.name || 'Unknown User'}
+        </p>
+        <p className="schedule-time">
+          <Clock size={14} />
+          {formatDateTime(task.scheduleDate, task.scheduleTimes)}
+        </p>
+        {task.isRecurring && (
+          <p className="recurring-info">
+            <Repeat size={14} />
+            Recurring: {task.recurrencePattern}
+          </p>
+        )}
+        {task.completionVerified && (
+          <p className="verified-info">
+            <CheckCircle size={14} />
+            Completion Verified
+          </p>
+        )}
+      </div>
 
-      <div className="controls-section">
-        <div className="search-container">
-          <Search size={16} className="search-icon" />
+      {task.imageProof && (
+        <div className="image-proof-section">
+          <p className="image-proof-label">
+            <Camera size={14} />
+            Completion Proof:
+          </p>
+          <div className="image-proof-container" onClick={() => handleViewImage(task.imageProof)}>
+            <img 
+              src={task.imageProof} 
+              alt="Completion proof"
+              className="image-proof-thumbnail"
+            />
+            <div className="image-overlay">
+              <Expand size={20} />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="task-actions">
+        <button
+          className="action-button complete-button"
+          onClick={() => handleCompleteTask(task._id)}
+        >
+          {task.status?.toLowerCase() === 'completed' ? <RefreshCw size={18} /> : <Check size={18} />}
+          <span>{task.status?.toLowerCase() === 'completed' ? 'Undo' : 'Complete'}</span>
+        </button>
+        
+        <button
+          className="action-button edit-button"
+          onClick={() => handleEditTask(task)}
+        >
+          <Edit size={18} />
+          <span>Edit</span>
+        </button>
+        
+        <button
+          className="action-button delete-button"
+          onClick={() => handleDeleteTask(task._id, task.type)}
+        >
+          <Trash2 size={18} />
+          <span>Delete</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="task-management-container">
+      {/* Header */}
+      <header className="header">
+        <div className="header-content">
+          <h1 className="header-title">Task Management</h1>
+          <button 
+            onClick={handleAddTask}
+            className="add-button"
+          >
+            <Plus size={24} />
+          </button>
+        </div>
+      </header>
+
+      {/* Search and Filter */}
+      <div className="search-container">
+        <div className="search-bar">
+          <Search size={20} />
           <input
             type="text"
-            placeholder="Search tasks..."
+            className="search-input"
+            placeholder="Search tasks, animals, or users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
           />
         </div>
-
-        <div className="filter-container">
-          <Filter size={16} className="filter-icon" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
+        <button 
+          onClick={() => setFilterModalVisible(true)}
+          className="filter-button"
+        >
+          <Filter size={20} />
+        </button>
+        <button 
+          onClick={handleRefresh}
+          className="refresh-button"
+        >
+          <RefreshCw size={20} />
+        </button>
       </div>
 
-      <div className="card">
-        <div className="table-container">
-          {loading ? (
-            <div className="empty-state">
-              <p>Loading tasks...</p>
-            </div>
-          ) : filteredTasks.length === 0 ? (
-            <div className="empty-state">
-              <p>No tasks found.</p>
-            </div>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Task</th>
-                  <th>Animal</th>
-                  <th>Assigned To</th>
-                  <th>Schedule</th>
-                  <th>Recurring</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTasks.map(task => (
-                  <tr key={task._id}>
-                    <td>{task.type}</td>
-                    <td>{task.animalId?.name || 'Unknown'}</td>
-                    <td>{task.assignedTo?.name || 'Unknown'}</td>
-                    <td>{formatDateTime(task.scheduleDate, task.scheduleTimes)}</td>
-                    <td>
-                      {task.isRecurring ? (
-                        <div className="recurring-info">
-                          <Calendar size={16} className="recurring-icon" />
-                          <span>{task.recurrencePattern}</span>
-                          {task.endDate && (
-                            <span className="recurring-range">
-                              {' '}until {new Date(task.endDate).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="no-recurring">No</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`badge ${task.status?.toLowerCase() === 'completed' ? 'badge-green' : 'badge-orange'}`}>
-                        {task.status}
-                      </span>
-                      {task.completedAt && (
-                        <div className="completed-time">
-                          {new Date(task.completedAt).toLocaleString()}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button 
-                          className="action-btn edit" 
-                          onClick={() => handleEditTask(task)}
-                          title="Edit Task"
-                        >
-                          <Edit3 />
-                        </button>
-                        <button 
-                          className="action-btn complete" 
-                          onClick={() => handleCompleteTask(task._id)}
-                          title={task.status?.toLowerCase() === 'completed' ? 'Mark as Pending' : 'Mark as Completed'}
-                        >
-                          <CheckCircle />
-                        </button>
-                        <button 
-                          className="action-btn delete" 
-                          onClick={() => handleDeleteTask(task._id, task.type)}
-                          title="Delete Task"
-                        >
-                          <Trash2 />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+      {/* Tasks List */}
+      <main className="main-content">
+        {loading ? (
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p className="loading-text">Loading tasks...</p>
+          </div>
+        ) : (
+          <div className="tasks-list">
+            {filteredTasks.length === 0 ? (
+              <div className="empty-container">
+                <div className="empty-icon">📋</div>
+                <h3 className="empty-text">No tasks found</h3>
+                <p className="empty-subtext">
+                  {searchTerm || statusFilter !== 'all' 
+                    ? 'Try adjusting your search or filter' 
+                    : 'Add your first task to get started'
+                  }
+                </p>
+              </div>
+            ) : (
+              filteredTasks.map(task => (
+                <TaskCard key={task._id} task={task} />
+              ))
+            )}
+          </div>
+        )}
+      </main>
 
-      {/* Toast Container for notifications */}
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
+      {/* Task Modal */}
+      <TaskModal 
+        showTaskModal={showTaskModal}
+        setShowTaskModal={setShowTaskModal}
+        editingTask={editingTask}
+        setEditingTask={setEditingTask}
       />
+
+      {/* Filter Modal */}
+      {filterModalVisible && (
+        <div className="modal-overlay" onClick={() => setFilterModalVisible(false)}>
+          <div className="filter-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="filter-header">
+              <h2 className="filter-title">Filter Tasks</h2>
+              <button onClick={() => setFilterModalVisible(false)} className="close-button">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="filter-content">
+              <h3 className="filter-section-title">Status</h3>
+              {filterOptions.map(option => (
+                <button
+                  key={option.value}
+                  className={`filter-option ${statusFilter === option.value ? 'selected' : ''}`}
+                  onClick={() => {
+                    setStatusFilter(option.value);
+                    setFilterModalVisible(false);
+                    showToast('info', 'Filter applied', `Showing ${option.label.toLowerCase()} tasks`);
+                  }}
+                >
+                  <span className="filter-option-text">{option.label}</span>
+                  {statusFilter === option.value && <Check size={20} />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Modal */}
+      {imageModalVisible && (
+        <div className="image-modal-overlay" onClick={() => setImageModalVisible(false)}>
+          <div className="image-modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="image-modal-header">
+              <h2 className="image-modal-title">Completion Proof</h2>
+              <button 
+                onClick={() => setImageModalVisible(false)}
+                className="image-modal-close-button"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            {selectedImage && (
+              <img 
+                src={selectedImage} 
+                alt="Completion proof"
+                className="full-size-image"
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toastMessage && (
+        <div className={`toast toast-${toastMessage.type}`}>
+          <div className="toast-content">
+            <strong>{toastMessage.text1}</strong>
+            {toastMessage.text2 && <p>{toastMessage.text2}</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

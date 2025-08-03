@@ -1,40 +1,18 @@
-// import React from 'react';
-// import LoginSignup from '../src/Pages/loginSignup'
-// import { BrowserRouter, Routes, Route } from 'react-router-dom';
-
-// const App = () => {
-//     return (
-      
-//         <BrowserRouter>
-//           <Routes>
-            
-//             <Route path="/" element={<LoginSignup />} />
-            
-          
-//           </Routes>
-//         </BrowserRouter>
-    
-//     );
-// };
-
-// export default App
-// src/App.jsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginSignup from '../src/Pages/loginSignup';
 import AdminDashboard from '../src/Pages/Admin/AdminDashboard';
-import VetDashboard from '../src/Pages/VetDashboard';
+import VetDashboard from './Pages/Veterinarian/VetDashboard';
 import ProtectedRoute from '../src/Routes/ProtectedRoute';
+import Home from './Pages/Home'; // ✅
 
 const App = () => {
   console.log('Rendering App, current userType:', localStorage.getItem('userType'));
 
-  // Helper function to check if user is authenticated
   const isAuthenticated = () => {
     return localStorage.getItem('authToken') && localStorage.getItem('userType');
   };
 
-  // Helper function to get user's dashboard route based on userType
   const getDashboardRoute = () => {
     const userType = localStorage.getItem('userType');
     switch (userType) {
@@ -42,6 +20,8 @@ const App = () => {
         return '/admin';
       case 'vet':
         return '/vet';
+      case 'user':
+        return '/home'; // added this just in case
       default:
         return '/';
     }
@@ -50,7 +30,7 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Login/Signup Route - redirect to dashboard if already authenticated */}
+        {/* Login / Signup */}
         <Route 
           path="/" 
           element={
@@ -60,18 +40,17 @@ const App = () => {
           } 
         />
 
-        {/* Admin Dashboard Route */}
-       <Route
-  path="/admin/*"
-  element={
-    <ProtectedRoute allowedRole="admin">
-      <AdminDashboard />
-    </ProtectedRoute>
-  }
-/>
+        {/* Admin Dashboard */}
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute allowedRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-
-        {/* Vet Dashboard Route */}
+        {/* Vet Dashboard */}
         <Route
           path="/vet"
           element={
@@ -81,16 +60,26 @@ const App = () => {
           }
         />
 
-        {/* Catch-all route - redirect to appropriate dashboard or login */}
+        {/* Home for regular users */}
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute allowedRole="user">
+              <Home />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Debug test route */}
+        <Route path="/test" element={<h1>Test Route Works!</h1>} />
+
+        {/* Catch-all fallback route */}
         <Route 
           path="*" 
           element={
             <Navigate to={isAuthenticated() ? getDashboardRoute() : '/'} replace />
           } 
         />
-
-        {/* DEBUG Route */}
-        <Route path="/test" element={<h1>Test Route Works!</h1>} />
       </Routes>
     </BrowserRouter>
   );
